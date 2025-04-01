@@ -57,11 +57,16 @@ func (us *userService) Register(email string, purpose string) int {
 		return response.ErrInvalidOTP
 	}
 	// 4. send Email OTP
-
 	// err = sendto.SendTemplateEmailOtp([]string{email}, "defnotqduong@gmail.com", "otp-auth.html", map[string]interface{}{
 	// 	"otp": strconv.Itoa(otp),
 	// })
 
+	// if err != nil {
+	// 	return response.ErrSendEmailOTP
+	// }
+
+	// send email OTP by Java
+	// err = sendto.SendEmailToJavaByAPI(strconv.Itoa(otp), email, "otp-auth.html")
 	// if err != nil {
 	// 	return response.ErrSendEmailOTP
 	// }

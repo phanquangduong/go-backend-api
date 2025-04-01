@@ -21,3 +21,5 @@
 {"level":"INFO","time":"2025-02-03T09:33:16.612+0700","caller":"initialize/run.go:17","msg":"Config Log ok!!","ok":"success"}
 {"level":"INFO","time":"2025-02-03T09:33:16.636+0700","caller":"initialize/mysql.go:33","msg":"Initializing MySQL successfully"}
 {"level":"INFO","time":"2025-02-03T09:33:16.968+0700","caller":"initialize/redis.go:30","msg":"Initializing Redis Successfully"}
+{"level":"INFO","time":"2025-04-01T15:48:41.940+0700","caller":"initialize/run.go:17","msg":"Config Log ok!!","ok":"success"}
+{"level":"INFO","time":"2025-04-01T15:48:41.941+0700","caller":"initialize/mysqlc.go:30","msg":"Initializing MySQL successfully"}
