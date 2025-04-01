@@ -41,11 +41,5 @@ func (up *userRepository) GetUserByEmail(email string) bool {
 	// 	return false
 	// }
 
-	user, err := up.sqlc.GetUserByEmailSQLC(ctx, email)
-
-	if err != nil {
-		return false
-	}
-
-	return user.UsrID != 0
+	return false
 }

@@ -26,7 +26,7 @@ func (uc *UserController) Register(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Email params: %s", params.Email)
+	fmt.Printf("Email params: %s\n", params.Email)
 	result := uc.userService.Register(params.Email, params.Purpose)
 	response.SuccessResponse(c, result, nil)
 }

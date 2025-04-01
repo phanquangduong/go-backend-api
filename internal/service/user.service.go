@@ -1,12 +1,17 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"go/go-backend-api/global"
 	"go/go-backend-api/internal/repo"
 	"go/go-backend-api/internal/utils/crypto"
 	"go/go-backend-api/internal/utils/random"
 	"go/go-backend-api/pkg/response"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 )
 
 type IUserService interface {
@@ -70,6 +75,25 @@ func (us *userService) Register(email string, purpose string) int {
 	// if err != nil {
 	// 	return response.ErrSendEmailOTP
 	// }
+
+	// send OTP via kafka
+	body := make(map[string]interface{})
+
+	body["otp"] = otp
+	body["email"] = email
+
+	bodyRequest, _ := json.Marshal(body)
+
+	message := kafka.Message{
+		Key:   []byte("otp-auth"),
+		Value: []byte(bodyRequest),
+		Time:  time.Now(),
+	}
+
+	err = global.KafkaProducer.WriteMessages(context.Background(), message)
+	if err != nil {
+		return response.ErrSendEmailOTP
+	}
 
 	return response.ErrCodeSuccess
 
