@@ -35,8 +35,8 @@ func InitMysql() {
 
 	// set Pool
 	SetPool()
-	migrateTables()
-	genTableDAO()
+	// migrateTables()
+	// genTableDAO()
 }
 
 func SetPool() {
