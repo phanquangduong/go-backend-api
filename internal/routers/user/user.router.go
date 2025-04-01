@@ -2,7 +2,6 @@ package user
 
 import (
 	"go/go-backend-api/internal/controller/account"
-	"go/go-backend-api/internal/wire"
 
 	"github.com/gin-gonic/gin"
 )
@@ -18,11 +17,11 @@ func (pr *UserRouter) InitUserRouter(Router *gin.RouterGroup) {
 
 	// WIRE go
 	// Dependency Injection (DI)
-	userController, _ := wire.InitUserRouterHandler()
+	// userController, _ := wire.InitUserRouterHandler()
 
 	userRouterPublic := Router.Group("/user")
 	{
-		userRouterPublic.POST("/register", userController.Register) // register -> YES -> NO
+		userRouterPublic.POST("/register", account.Login.Register) // register -> YES -> NO
 		userRouterPublic.POST("/login", account.Login.Login)
 		userRouterPublic.POST("/otp")
 	}
