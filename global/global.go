@@ -1,6 +1,7 @@
 package global
 
 import (
+	"database/sql"
 	"go/go-backend-api/pkg/logger"
 	"go/go-backend-api/pkg/setting"
 
@@ -13,6 +14,7 @@ var (
 	Logger *logger.LoggerZap
 	Mdb    *gorm.DB
 	Rdb    *redis.Client
+	Mdbc   *sql.DB
 )
 
 /*
