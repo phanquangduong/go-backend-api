@@ -22,7 +22,7 @@ func NewUserController(userService service.IUserService) *UserController {
 func (uc *UserController) Register(c *gin.Context) {
 	var params vo.UserRegistrationRequest
 	if err := c.ShouldBindJSON(&params); err != nil {
-		response.ErrorResponse(c, response.ErrCodeParamInvalid)
+		response.ErrorResponse(c, response.ErrCodeParamInvalid, err.Error())
 		return
 	}
 
