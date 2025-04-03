@@ -11,7 +11,6 @@ import (
 	"go/go-backend-api/internal/utils"
 	"go/go-backend-api/internal/utils/crypto"
 	"go/go-backend-api/internal/utils/random"
-	"go/go-backend-api/internal/utils/sendto"
 	"go/go-backend-api/pkg/response"
 	"log"
 	"strconv"
@@ -84,10 +83,10 @@ func (s *sUserLogin) Register(ctx context.Context, in *models.RegisterInput) (co
 	// 6. Send OTP
 	switch in.VerifyType {
 	case constants.EMAIL:
-		err = sendto.SendTextEmailOtp([]string{in.VerifyKey}, constants.HOST_EMAIL, strconv.Itoa(otpNew))
-		if err != nil {
-			return response.ErrSendEmailOTP, fmt.Errorf("Failed to send email OTP")
-		}
+		// err = sendto.SendTextEmailOtp([]string{in.VerifyKey}, constants.HOST_EMAIL, strconv.Itoa(otpNew))
+		// if err != nil {
+		// 	return response.ErrSendEmailOTP, fmt.Errorf("failed to send email OTP")
+		// }
 		// 7. save OTP to MYSQL
 		result, err := s.r.InsertOTPVerify(ctx, database.InsertOTPVerifyParams{
 			VerifyOtp:     strconv.Itoa(otpNew),

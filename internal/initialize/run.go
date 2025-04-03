@@ -3,16 +3,16 @@ package initialize
 import (
 	"fmt"
 	"go/go-backend-api/global"
-	"strconv"
 
+	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
-func Run() {
-	//	load configuration
+func Run() *gin.Engine {
+	// Load configuration
 	LoadConfig()
 	m := global.Config.Mysql
-	fmt.Println("Loading configuration nysql", m.Username, m.Password)
+	fmt.Println("Loading configuration mysql", m.Username, m.Password)
 	InitLogger()
 	global.Logger.Info("Config Log ok!!", zap.String("ok", "success"))
 	InitMysql()
@@ -20,10 +20,7 @@ func Run() {
 	InitServiceInterface()
 	InitRedis()
 	InitKafka()
-	s := global.Config.Server
-	port := strconv.Itoa(s.Port)
 
 	r := InitRouter()
-	r.Run(":" + port)
-
+	return r
 }
