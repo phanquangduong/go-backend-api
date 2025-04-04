@@ -16,14 +16,30 @@ var Login = new(cUserLogin)
 type cUserLogin struct {
 }
 
+// User Login documentation
+// @Summary      User Login
+// @Description  User Login
+// @Tags         account management
+// @Accept       json
+// @Produce      json
+// @Param        payload body models.LoginInput true "payload"
+// @Success      200  {object}  response.ResponseData
+// @Failure      500  {object}  response.ErrorResponseData
+// @Router       /user/login [post]
 func (c *cUserLogin) Login(ctx *gin.Context) {
 	// Implement logic for login
-	err := service.UserLogin().Login(ctx)
+	var params models.LoginInput
+	if err := ctx.ShouldBindJSON(&params); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
+		return
+	}
+
+	codeResult, dataResult, err := service.UserLogin().Login(ctx, &params)
 	if err != nil {
 		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
 		return
 	}
-	response.SuccessResponse(ctx, response.ErrCodeSuccess, nil)
+	response.SuccessResponse(ctx, codeResult, dataResult)
 }
 
 // User Registration documentation
@@ -50,4 +66,52 @@ func (c *cUserLogin) Register(ctx *gin.Context) {
 		return
 	}
 	response.SuccessResponse(ctx, codeStatus, nil)
+}
+
+// VerifyOTP Register By User documentation
+// @Summary      VerifyOTP Register By User
+// @Description  VerifyOTP Register By User
+// @Tags         account management
+// @Accept       json
+// @Produce      json
+// @Param        payload body models.VerifyInput true "payload"
+// @Success      200  {object}  response.ResponseData
+// @Failure      500  {object}  response.ErrorResponseData
+// @Router       /user/verify_account [post]
+func (c *cUserLogin) VerifyOTP(ctx *gin.Context) {
+	var params models.VerifyInput
+	if err := ctx.ShouldBindJSON(&params); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
+		return
+	}
+
+	result, err := service.UserLogin().VerifyOTP(ctx, &params)
+	if err != nil {
+		response.ErrorResponse(ctx, response.ErrInvalidOTP, err.Error())
+	}
+	response.SuccessResponse(ctx, response.ErrCodeSuccess, result)
+}
+
+// Update Password Register By User documentation
+// @Summary      Update Password Register By User
+// @Description  Update Password Register By User
+// @Tags         account management
+// @Accept       json
+// @Produce      json
+// @Param        payload body models.UpdatePasswordRegisterInput true "payload"
+// @Success      200  {object}  response.ResponseData
+// @Failure      500  {object}  response.ErrorResponseData
+// @Router       /user/update_password_registeer [post]
+func (c *cUserLogin) UpdatePasswordRegister(ctx *gin.Context) {
+	var params models.UpdatePasswordRegisterInput
+	if err := ctx.ShouldBindJSON(&params); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
+		return
+	}
+
+	result, err := service.UserLogin().UpdatePasswordRegister(ctx, params.UserToken, params.UserPassword)
+	if err != nil {
+		response.ErrorResponse(ctx, response.ErrInvalidOTP, err.Error())
+	}
+	response.SuccessResponse(ctx, response.ErrCodeSuccess, result)
 }

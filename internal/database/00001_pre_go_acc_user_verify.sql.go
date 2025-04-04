@@ -88,6 +88,39 @@ func (q *Queries) InsertOTPVerify(ctx context.Context, arg InsertOTPVerifyParams
 	)
 }
 
+const insertOrUpdateOTPVerify = `-- name: InsertOrUpdateOTPVerify :execresult
+INSERT INTO pre_go_acc_user_verify (
+    verify_otp,
+    verify_key,
+    verify_key_hash, 
+    verify_type, 
+    is_verified, 
+    is_deleted, 
+    verify_created_at, 
+    verify_updated_at
+)
+VALUES (?, ?, ?, ?, 0, 0, NOW(), NOW())
+ON DUPLICATE KEY UPDATE 
+    verify_otp = VALUES(verify_otp),
+    verify_updated_at = NOW()
+`
+
+type InsertOrUpdateOTPVerifyParams struct {
+	VerifyOtp     string
+	VerifyKey     string
+	VerifyKeyHash string
+	VerifyType    sql.NullInt32
+}
+
+func (q *Queries) InsertOrUpdateOTPVerify(ctx context.Context, arg InsertOrUpdateOTPVerifyParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, insertOrUpdateOTPVerify,
+		arg.VerifyOtp,
+		arg.VerifyKey,
+		arg.VerifyKeyHash,
+		arg.VerifyType,
+	)
+}
+
 const updateUserVerificationStatus = `-- name: UpdateUserVerificationStatus :exec
 UPDATE ` + "`" + `pre_go_acc_user_verify` + "`" + `
 SET is_verified = 1,

@@ -24,7 +24,7 @@ INSERT INTO `pre_go_acc_user_base` (
 -- name: LoginUserBase :exec
 UPDATE `pre_go_acc_user_base`
 SET user_login_time = NOW(), user_login_ip = ?
-WHERE user_account = ? AND user_password = ?;
+WHERE user_account = ?;
 
 -- name: LogoutUserBase :exec
 UPDATE `pre_go_acc_user_base`

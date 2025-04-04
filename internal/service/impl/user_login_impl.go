@@ -3,12 +3,14 @@ package impl
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"go/go-backend-api/global"
 	"go/go-backend-api/internal/constants"
 	"go/go-backend-api/internal/database"
 	"go/go-backend-api/internal/models"
 	"go/go-backend-api/internal/utils"
+	"go/go-backend-api/internal/utils/auth"
 	"go/go-backend-api/internal/utils/crypto"
 	"go/go-backend-api/internal/utils/random"
 	"go/go-backend-api/pkg/response"
@@ -31,8 +33,74 @@ func NewUserLoginImpl(r *database.Queries) *sUserLogin {
 }
 
 // Implement the IUserLogin interface here
-func (s *sUserLogin) Login(ctx context.Context) error {
-	return nil
+func (s *sUserLogin) Login(ctx context.Context, in *models.LoginInput) (codeResult int, out models.LoginOutput, err error) {
+	// 1. logic login
+	userBase, err := s.r.GetOneUserInfo(ctx, in.UserAccount)
+	if err != nil {
+		return response.ErrCodeAuthFailed, out, err
+	}
+	// 2. check password?
+	if !crypto.MatchingPassword(userBase.UserPassword, in.UserPassword, userBase.UserSalt) {
+		return response.ErrCodeAuthFailed, out, fmt.Errorf("does not match password")
+	}
+	// 3. check two-factor authentication
+	// isTwoFactorEnable, err := s.r.IsTwoFactorEnabled(ctx, uint32(userBase.UserID))
+	// if err != nil {
+	// 	return response.ErrCodeAuthFailed, out, fmt.Errorf("does not match password")
+	// }
+	// if isTwoFactorEnable > 0 {
+	// 	// sen otp to in.TwoFactorEmail
+	// 	keyUserLoginTwoFactor := crypto.GetHash("2fa:otp:" + strconv.Itoa(int(userBase.UserID)))
+	// 	err = global.Rdb.SetEx(ctx, keyUserLoginTwoFactor, "111111", time.Duration(consts.TIME_OTP_REGISTER)*time.Minute).Err()
+	// 	if err != nil {
+	// 		return response.ErrCodeAuthFailed, out, fmt.Errorf("set otp redis faiuled")
+	// 	}
+	// 	// send otp via twofactorEmail
+	// 	// get email 2fa
+	// 	infoUserTwoFactor, err := s.r.GetTwoFactorMethodByIDAndType(ctx, database.GetTwoFactorMethodByIDAndTypeParams{
+	// 		UserID:            uint32(userBase.UserID),
+	// 		TwoFactorAuthType: database.PreGoAccUserTwoFactor9999TwoFactorAuthTypeEMAIL,
+	// 	})
+	// 	if err != nil {
+	// 		return response.ErrCodeAuthFailed, out, fmt.Errorf("get two factor method failed")
+	// 	}
+	// 	// go sendto.SendEmailToJavaByAPI()
+	// 	log.Println("send OTP 2FA to Email::", infoUserTwoFactor.TwoFactorEmail)
+	// 	go sendto.SendTextEmailOtp([]string{infoUserTwoFactor.TwoFactorEmail.String}, consts.HOST_EMAIL, "111111")
+
+	// 	out.Message = "send OTP 2FA to Email, pls het OTP by Email.."
+	// 	return response.ErrCodeSuccess, out, nil
+	// }
+	// 4. update password time
+	go s.r.LoginUserBase(ctx, database.LoginUserBaseParams{
+		UserLoginIp: sql.NullString{String: "127.0.0.1", Valid: true},
+		UserAccount: in.UserAccount,
+	})
+
+	// 5. Create UUID User
+	subToken := utils.GenerateCliTokenUUID(int(userBase.UserID))
+	log.Println("subtoken:", subToken)
+	// 6. get user_info table
+	infoUser, err := s.r.GetUser(ctx, uint64(userBase.UserID))
+	if err != nil {
+		return response.ErrCodeAuthFailed, out, err
+	}
+	// convert to json
+	infoUserJson, err := json.Marshal(infoUser)
+	if err != nil {
+		return response.ErrCodeAuthFailed, out, fmt.Errorf("convert to json failed: %v", err)
+	}
+	// 7. give infoUserJson to redis with key = subToken
+	err = global.Rdb.Set(ctx, subToken, infoUserJson, time.Duration(constants.TIME_OTP_REGISTER)*time.Minute).Err()
+	if err != nil {
+		return response.ErrCodeAuthFailed, out, err
+	}
+	// 8. create token
+	out.Token, err = auth.CreateToken(subToken)
+	if err != nil {
+		return
+	}
+	return 200, out, nil
 }
 
 func (s *sUserLogin) Register(ctx context.Context, in *models.RegisterInput) (codeResult int, err error) {
@@ -88,7 +156,7 @@ func (s *sUserLogin) Register(ctx context.Context, in *models.RegisterInput) (co
 		// 	return response.ErrSendEmailOTP, fmt.Errorf("failed to send email OTP")
 		// }
 		// 7. save OTP to MYSQL
-		result, err := s.r.InsertOTPVerify(ctx, database.InsertOTPVerifyParams{
+		result, err := s.r.InsertOrUpdateOTPVerify(ctx, database.InsertOrUpdateOTPVerifyParams{
 			VerifyOtp:     strconv.Itoa(otpNew),
 			VerifyType:    sql.NullInt32{Int32: 1, Valid: true},
 			VerifyKey:     in.VerifyKey,
@@ -113,10 +181,94 @@ func (s *sUserLogin) Register(ctx context.Context, in *models.RegisterInput) (co
 	return response.ErrCodeSuccess, nil
 }
 
-func (s *sUserLogin) VerifyOTP(ctx context.Context) error {
-	return nil
+func (s *sUserLogin) VerifyOTP(ctx context.Context, in *models.VerifyInput) (out models.VerifyOtpOutput, err error) {
+	// logic
+	hashKey := crypto.GetHash(strings.ToLower(in.VerifyKey))
+
+	// get otp
+	otpFound, err := global.Rdb.Get(ctx, utils.GetUserKey(hashKey)).Result()
+	if err != nil {
+		return out, err
+	}
+	if in.VerifyCode != otpFound {
+		// Neu nhu otp sai 3 lan trong vong 1 phut
+
+		return out, fmt.Errorf("OTP not match")
+	}
+
+	infoOtp, err := s.r.GetInfoOTP(ctx, hashKey)
+	if err != nil {
+		return out, err
+	}
+
+	// update status verified
+	err = s.r.UpdateUserVerificationStatus(ctx, hashKey)
+	if err != nil {
+		return out, err
+	}
+
+	out.Token = infoOtp.VerifyKeyHash
+	out.Message = "success"
+
+	return out, err
 }
 
-func (s *sUserLogin) UpdatePasswordRegister(ctx context.Context) error {
-	return nil
+func (s *sUserLogin) UpdatePasswordRegister(ctx context.Context, token string, password string) (userId int, err error) {
+	// token is already verified : user_verify table
+	infoOtp, err := s.r.GetInfoOTP(ctx, token)
+	if err != nil {
+		return response.ErrCodeUserOtpNotExists, err
+	}
+
+	// check isVerified ok
+	if infoOtp.IsVerified.Int32 == 0 {
+		return response.ErrCodeOtpNotExists, fmt.Errorf("user OTP not verified")
+	}
+
+	// check token is exists in user_base table
+
+	// update user_base table
+	userBase := database.AddUserBaseParams{}
+	userBase.UserAccount = infoOtp.VerifyKey
+	userSalt, err := crypto.GenerateSalt(16)
+	if err != nil {
+		return response.ErrCodeOtpNotExists, err
+	}
+	userBase.UserSalt = userSalt
+	userBase.UserPassword = crypto.HashPassword(password, userSalt)
+	// add UserBase to user_base table
+	newUserBase, err := s.r.AddUserBase(ctx, userBase)
+	if err != nil {
+		return response.ErrCodeOtpNotExists, err
+	}
+
+	user_id, err := newUserBase.LastInsertId()
+	if err != nil {
+		return response.ErrCodeOtpNotExists, err
+	}
+
+	// add user_id to user_info table
+	newUserInfo, err := s.r.AddUserHaveUserId(ctx, database.AddUserHaveUserIdParams{
+		UserID:               uint64(user_id),
+		UserAccount:          infoOtp.VerifyKey,
+		UserNickname:         sql.NullString{String: infoOtp.VerifyKey, Valid: true},
+		UserAvatar:           sql.NullString{String: "", Valid: true},
+		UserState:            1,
+		UserMobile:           sql.NullString{String: "", Valid: true},
+		UserGender:           sql.NullInt16{Int16: 0, Valid: true},
+		UserBirthday:         sql.NullTime{Time: time.Time{}, Valid: false},
+		UserEmail:            sql.NullString{String: infoOtp.VerifyKey, Valid: true},
+		UserIsAuthentication: 1,
+	})
+
+	if err != nil {
+		return response.ErrCodeUserOtpNotExists, err
+	}
+
+	user_id, err = newUserInfo.LastInsertId()
+	if err != nil {
+		return response.ErrCodeOtpNotExists, err
+	}
+
+	return int(user_id), nil
 }
