@@ -30,3 +30,14 @@ type LoginInput struct {
 type LoginOutput struct {
 	Token string `json:"token"`
 }
+
+type SetupTwoFactorAuthInput struct {
+	UserId            uint32 `json:"user_id"`
+	TwoFactorAuthType string `json:"two_factor_auth_type"`
+	TwoFactorEmail    string `json:"two_factor_email"`
+}
+
+type TwoFactorVerificationAuthInput struct {
+	UserId        uint32 `json:"user_id"`
+	TwoFactorCode string `json:"two_factor_code"`
+}

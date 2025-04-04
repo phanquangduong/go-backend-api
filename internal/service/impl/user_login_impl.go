@@ -32,6 +32,46 @@ func NewUserLoginImpl(r *database.Queries) *sUserLogin {
 	}
 }
 
+// ------ TWO FACTOR AUTHENTICATION -----
+
+func (s *sUserLogin) IsTwoFactorEnabled(ctx context.Context, userId int) (codeResult int, rs bool, err error) {
+	return 200, true, nil
+}
+func (s *sUserLogin) SetupTwoFactorAuth(ctx context.Context, in *models.SetupTwoFactorAuthInput) (codeResult int, err error) {
+	// 1. Check isTwoFactorEnabled -> true -> return
+	isTwoFactorAuth, err := s.r.IsTwoFactorEnabled(ctx, in.UserId)
+	if err != nil {
+		return response.ErrCodeTwoFactorAuthSetupFailed, err
+	}
+
+	if isTwoFactorAuth > 0 {
+		return response.ErrCodeTwoFactorAuthSetupFailed, fmt.Errorf("two factor authentication is already enabled")
+	}
+
+	// 2. Create new type Auth
+	err = s.r.EnableTwoFactorTypeEmail(ctx, database.EnableTwoFactorTypeEmailParams{
+		UserID:            in.UserId,
+		TwoFactorAuthType: database.PreGoAccUserTwoFactorTwoFactorAuthTypeEMAIL,
+		TwoFactorEmail:    sql.NullString{String: in.TwoFactorEmail, Valid: true},
+	})
+
+	if err != nil {
+		return response.ErrCodeTwoFactorAuthSetupFailed, err
+	}
+
+	// 3. Send otp to in.TwoFactorEmail
+	keyUserTwoFactor := crypto.GetHash("2fa:" + strconv.Itoa(int(in.UserId)))
+	// otpNew := random.GenerateSixDigitOtp()
+	go global.Rdb.Set(ctx, keyUserTwoFactor, "123456", time.Duration(constants.TIME_2FA_OTP)*time.Minute).Err()
+
+	return response.ErrCodeSuccess, nil
+}
+func (s *sUserLogin) VerifyTwoFactorAuth(ctx context.Context, in *models.TwoFactorVerificationAuthInput) (codeResult int, err error) {
+	return 200, nil
+}
+
+// ----- END TWO FACTOR AUTHENTICATION -----
+
 // Implement the IUserLogin interface here
 func (s *sUserLogin) Login(ctx context.Context, in *models.LoginInput) (codeResult int, out models.LoginOutput, err error) {
 	// 1. logic login
@@ -44,33 +84,7 @@ func (s *sUserLogin) Login(ctx context.Context, in *models.LoginInput) (codeResu
 		return response.ErrCodeAuthFailed, out, fmt.Errorf("does not match password")
 	}
 	// 3. check two-factor authentication
-	// isTwoFactorEnable, err := s.r.IsTwoFactorEnabled(ctx, uint32(userBase.UserID))
-	// if err != nil {
-	// 	return response.ErrCodeAuthFailed, out, fmt.Errorf("does not match password")
-	// }
-	// if isTwoFactorEnable > 0 {
-	// 	// sen otp to in.TwoFactorEmail
-	// 	keyUserLoginTwoFactor := crypto.GetHash("2fa:otp:" + strconv.Itoa(int(userBase.UserID)))
-	// 	err = global.Rdb.SetEx(ctx, keyUserLoginTwoFactor, "111111", time.Duration(consts.TIME_OTP_REGISTER)*time.Minute).Err()
-	// 	if err != nil {
-	// 		return response.ErrCodeAuthFailed, out, fmt.Errorf("set otp redis faiuled")
-	// 	}
-	// 	// send otp via twofactorEmail
-	// 	// get email 2fa
-	// 	infoUserTwoFactor, err := s.r.GetTwoFactorMethodByIDAndType(ctx, database.GetTwoFactorMethodByIDAndTypeParams{
-	// 		UserID:            uint32(userBase.UserID),
-	// 		TwoFactorAuthType: database.PreGoAccUserTwoFactor9999TwoFactorAuthTypeEMAIL,
-	// 	})
-	// 	if err != nil {
-	// 		return response.ErrCodeAuthFailed, out, fmt.Errorf("get two factor method failed")
-	// 	}
-	// 	// go sendto.SendEmailToJavaByAPI()
-	// 	log.Println("send OTP 2FA to Email::", infoUserTwoFactor.TwoFactorEmail)
-	// 	go sendto.SendTextEmailOtp([]string{infoUserTwoFactor.TwoFactorEmail.String}, consts.HOST_EMAIL, "111111")
 
-	// 	out.Message = "send OTP 2FA to Email, pls het OTP by Email.."
-	// 	return response.ErrCodeSuccess, out, nil
-	// }
 	// 4. update password time
 	go s.r.LoginUserBase(ctx, database.LoginUserBaseParams{
 		UserLoginIp: sql.NullString{String: "127.0.0.1", Valid: true},
