@@ -41,6 +41,17 @@ func (q *Queries) CheckUserBaseExists(ctx context.Context, userAccount string) (
 	return count, err
 }
 
+const disableIsTwoFactorEnabled = `-- name: DisableIsTwoFactorEnabled :exec
+UPDATE pre_go_acc_user_base
+SET is_two_factor_enabled = 0
+WHERE user_id = ? AND is_two_factor_enabled = 1
+`
+
+func (q *Queries) DisableIsTwoFactorEnabled(ctx context.Context, userID int32) error {
+	_, err := q.db.ExecContext(ctx, disableIsTwoFactorEnabled, userID)
+	return err
+}
+
 const getOneUserInfo = `-- name: GetOneUserInfo :one
 SELECT user_id, user_account, user_password, user_salt
 FROM ` + "`" + `pre_go_acc_user_base` + "`" + `
@@ -126,5 +137,16 @@ WHERE user_account = ?
 
 func (q *Queries) LogoutUserBase(ctx context.Context, userAccount string) error {
 	_, err := q.db.ExecContext(ctx, logoutUserBase, userAccount)
+	return err
+}
+
+const updateIsTwoFactorEnabled = `-- name: UpdateIsTwoFactorEnabled :exec
+UPDATE pre_go_acc_user_base
+SET is_two_factor_enabled = 1
+WHERE user_id = ? AND is_two_factor_enabled = 0
+`
+
+func (q *Queries) UpdateIsTwoFactorEnabled(ctx context.Context, userID int32) error {
+	_, err := q.db.ExecContext(ctx, updateIsTwoFactorEnabled, userID)
 	return err
 }

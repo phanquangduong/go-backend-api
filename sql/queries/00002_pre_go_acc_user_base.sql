@@ -31,3 +31,12 @@ UPDATE `pre_go_acc_user_base`
 SET user_logout_time = NOW()
 WHERE user_account = ?;
 
+-- name: UpdateIsTwoFactorEnabled :exec
+UPDATE pre_go_acc_user_base
+SET is_two_factor_enabled = 1
+WHERE user_id = ? AND is_two_factor_enabled = 0;
+
+-- name: DisableIsTwoFactorEnabled :exec
+UPDATE pre_go_acc_user_base
+SET is_two_factor_enabled = 0
+WHERE user_id = ? AND is_two_factor_enabled = 1;

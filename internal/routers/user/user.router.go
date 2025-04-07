@@ -37,6 +37,7 @@ func (pr *UserRouter) InitUserRouter(Router *gin.RouterGroup) {
 	// userRouterPrivate.Use(Permission())
 	{
 		userRouterPrivate.POST("/two_factor/setup", account.TwoFactor.SetupTwoFactorAuth)
+		userRouterPrivate.POST("/two_factor/verify", account.TwoFactor.VerifyTwoFactorAuth)
 	}
 
 }

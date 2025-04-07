@@ -84,8 +84,21 @@ func (q *Queries) DisableTwoFactor(ctx context.Context, arg DisableTwoFactorPara
 
 const enableTwoFactorTypeEmail = `-- name: EnableTwoFactorTypeEmail :exec
 
-INSERT INTO pre_go_acc_user_two_factor (user_id, two_factor_auth_type, two_factor_email, two_factor_auth_secret, two_factor_is_active, two_factor_created_at, two_factor_updated_at)
-VALUES (?, ?, ?, "OTP", FALSE, NOW(), NOW())
+INSERT INTO pre_go_acc_user_two_factor (
+    user_id,
+    two_factor_auth_type,
+    two_factor_email,
+    two_factor_auth_secret,
+    two_factor_is_active,
+    two_factor_created_at,
+    two_factor_updated_at
+)
+VALUES (?, ?, ?, 'OTP', FALSE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    two_factor_auth_type = VALUES(two_factor_auth_type),
+    two_factor_email = VALUES(two_factor_email),
+    two_factor_auth_secret = VALUES(two_factor_auth_secret),
+    two_factor_updated_at = NOW()
 `
 
 type EnableTwoFactorTypeEmailParams struct {

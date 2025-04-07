@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS `pre_go_acc_user_two_factor` (
 
     -- Chỉ mục để tối ưu hóa truy vấn theo `user_id` và `auth_type`
     INDEX `idx_user_id` (`user_id`),
-    INDEX `idx_auth_type` (`two_factor_auth_type`)
+    INDEX `idx_auth_type` (`two_factor_auth_type`),
+    UNIQUE KEY `unique_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='account_user_two_factor';
 
 -- +goose StatementEnd

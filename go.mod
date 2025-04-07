@@ -20,6 +20,11 @@ require (
 )
 
 require (
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/ulule/limiter/v3 v3.11.2 // indirect
+)
+
+require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
